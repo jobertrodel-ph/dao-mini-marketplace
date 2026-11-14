@@ -32,13 +32,18 @@ async function ConnectLoader({
 
     if (accountId) {
       const stripe = getStripeClient();
-      const account = await stripe.accounts.retrieve(accountId);
+      const account = await stripe.v2.core.accounts.retrieve(accountId, {
+        include: ["configuration.merchant"],
+      });
+      const chargesEnabled =
+        account.configuration?.merchant?.capabilities?.card_payments?.status ===
+        "active";
 
       const { data: updatedSeller } = await supabase
         .from("sellers")
         .update({
-          charges_enabled: Boolean(account.charges_enabled),
-          details_submitted: Boolean(account.details_submitted),
+          charges_enabled: chargesEnabled,
+          details_submitted: chargesEnabled,
           updated_at: new Date().toISOString(),
         })
         .eq("stripe_account_id", account.id)

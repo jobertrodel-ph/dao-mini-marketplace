@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       const account = await stripe.v2.core.accounts.create({
         display_name: rawEmail,
         contact_email: rawEmail,
-        dashboard: 'full',
+        dashboard: 'none',
         defaults: {
           responsibilities: {
             fees_collector: 'stripe',
