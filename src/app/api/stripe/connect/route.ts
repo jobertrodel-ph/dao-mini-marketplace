@@ -49,23 +49,39 @@ export async function POST(request: Request) {
     let stripeAccountId = existingSeller?.stripe_account_id ?? '';
 
     if (!stripeAccountId) {
-      const account = await stripe.accounts.create({
-        type: 'express',
-        email: rawEmail,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
+      const account = await stripe.v2.core.accounts.create({
+        display_name: rawEmail,
+        contact_email: rawEmail,
+        dashboard: 'full',
+        defaults: {
+          responsibilities: {
+            fees_collector: 'stripe',
+            losses_collector: 'stripe',
+          },
+        },
+        identity: {
+          country: 'us',
+        },
+        configuration: {
+          merchant: {
+            capabilities: {
+              card_payments: { requested: true },
+            },
+          },
         },
       });
 
       stripeAccountId = account.id;
+      const chargesEnabled =
+        account.configuration?.merchant?.capabilities?.card_payments?.status ===
+        'active';
 
       const { error: upsertError } = await supabase.from('sellers').upsert(
         {
           email: rawEmail,
           stripe_account_id: stripeAccountId,
-          charges_enabled: Boolean(account.charges_enabled),
-          details_submitted: Boolean(account.details_submitted),
+          charges_enabled: chargesEnabled,
+          details_submitted: chargesEnabled,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'email' }
@@ -78,27 +94,36 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      const account = await stripe.accounts.retrieve(stripeAccountId);
+      const account = await stripe.v2.core.accounts.retrieve(stripeAccountId, {
+        include: ['configuration.merchant'],
+      });
+      const chargesEnabled =
+        account.configuration?.merchant?.capabilities?.card_payments?.status ===
+        'active';
 
       await supabase
         .from('sellers')
         .update({
-          charges_enabled: Boolean(account.charges_enabled),
-          details_submitted: Boolean(account.details_submitted),
+          charges_enabled: chargesEnabled,
+          details_submitted: chargesEnabled,
           updated_at: new Date().toISOString(),
         })
         .eq('email', rawEmail);
     }
 
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await stripe.v2.core.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${origin}/connect?refresh=1&email=${encodeURIComponent(
-        rawEmail
-      )}`,
-      return_url: `${origin}/connect?connected=1&account_id=${encodeURIComponent(
-        stripeAccountId
-      )}`,
-      type: 'account_onboarding',
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          refresh_url: `${origin}/connect?refresh=1&email=${encodeURIComponent(
+            rawEmail
+          )}`,
+          return_url: `${origin}/connect?connected=1&account_id=${encodeURIComponent(
+            stripeAccountId
+          )}`,
+        },
+      },
     });
 
     return NextResponse.json({
