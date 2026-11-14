@@ -209,9 +209,27 @@ a {
   line-height: 1.5;
 }
 
-.hero-search-wrap {
+.hero-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
   width: 100%;
-  max-width: 290px;
+  max-width: 480px;
+}
+
+.hero-search-wrap {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.hero-sort-wrap {
+  flex: 0 1 190px;
+  min-width: 165px;
+}
+
+.sort-select {
+  cursor: pointer;
 }
 
 .search-input,
@@ -724,8 +742,10 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .hero-search-wrap {
+  .hero-controls,
+  .hero-sort-wrap {
     max-width: none;
+    flex: 1 1 100%;
   }
 
   .bazaar-brand-sub {

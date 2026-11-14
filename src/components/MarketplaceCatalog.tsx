@@ -16,6 +16,7 @@ interface MarketplaceCatalogProps {
 }
 
 type FilterTab = "All Treasures" | TreasureCategory;
+type SortOption = "newest" | "price-asc" | "price-desc";
 
 const FILTER_TABS: readonly FilterTab[] = [
   "All Treasures",
@@ -29,6 +30,7 @@ export default function MarketplaceCatalog({
   const [activeCategory, setActiveCategory] =
     useState<FilterTab>("All Treasures");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -40,6 +42,16 @@ export default function MarketplaceCatalog({
       item.title.toLowerCase().includes(normalizedQuery) ||
       item.description.toLowerCase().includes(normalizedQuery);
     return matchesCategory && matchesSearch;
+  });
+
+  const sortedListings = [...filteredListings].sort((a, b) => {
+    if (sortBy === "price-asc") {
+      return Number(a.price) - Number(b.price);
+    }
+    if (sortBy === "price-desc") {
+      return Number(b.price) - Number(a.price);
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
@@ -54,18 +66,36 @@ export default function MarketplaceCatalog({
           </p>
         </div>
 
-        <div className="hero-search-wrap">
-          <label htmlFor="treasure-search" className="sr-only">
-            Search treasures
-          </label>
-          <input
-            id="treasure-search"
-            type="search"
-            className="search-input"
-            placeholder="Search relics by keyword..."
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
+        <div className="hero-controls">
+          <div className="hero-search-wrap">
+            <label htmlFor="treasure-search" className="sr-only">
+              Search treasures
+            </label>
+            <input
+              id="treasure-search"
+              type="search"
+              className="search-input"
+              placeholder="Search relics by keyword..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
+
+          <div className="hero-sort-wrap">
+            <label htmlFor="treasure-sort" className="sr-only">
+              Sort treasures
+            </label>
+            <select
+              id="treasure-sort"
+              className="select-input sort-select"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+            >
+              <option value="newest">Sort: Newest First</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -105,7 +135,7 @@ export default function MarketplaceCatalog({
         </p>
       )}
 
-      {filteredListings.length === 0 ? (
+      {sortedListings.length === 0 ? (
         <div className="empty-bazaar">
           <span className="empty-seal" aria-hidden="true">
             宝
@@ -120,7 +150,7 @@ export default function MarketplaceCatalog({
         </div>
       ) : (
         <div className="listings-grid">
-          {filteredListings.map((listing) => (
+          {sortedListings.map((listing) => (
             <Link
               key={listing.id}
               href={`/listings/${listing.id}`}
