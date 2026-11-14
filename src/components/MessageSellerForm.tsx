@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { getSupabaseClient } from "@/lib/supabase";
 
 interface MessageSellerFormProps {
   listingId: string;
@@ -14,7 +13,7 @@ export default function MessageSellerForm({
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isSent, setIsSent] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,28 +31,48 @@ export default function MessageSellerForm({
 
     setIsSubmitting(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     try {
-      const supabase = getSupabaseClient();
-      const { error } = await supabase.from("messages").insert({
-        listing_id: listingId,
-        buyer_email: trimmedEmail,
-        body: trimmedBody,
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          listingId,
+          buyerEmail: trimmedEmail,
+          body: trimmedBody,
+        }),
       });
 
-      if (error) {
-        setErrorMsg(error.message);
+      const result = (await response.json()) as {
+        error?: string;
+        emailSent?: boolean;
+        emailNote?: string;
+      };
+
+      if (!response.ok) {
+        setErrorMsg(
+          result.error ?? "Unable to send your message to the seller.",
+        );
         return;
       }
 
-      setIsSent(true);
+      setSuccessMsg(
+        result.emailSent
+          ? "Transmission sealed! Your message was saved and an email notification was sent to the seller."
+          : `Transmission sealed! Your message was saved in Supabase.${
+              result.emailNote ? ` (${result.emailNote})` : ""
+            }`,
+      );
       setBuyerEmail("");
       setBody("");
     } catch (err) {
       setErrorMsg(
         err instanceof Error
           ? err.message
-          : "Unable to send your message to Supabase.",
+          : "Unable to reach the messaging service.",
       );
     } finally {
       setIsSubmitting(false);
@@ -67,9 +86,9 @@ export default function MessageSellerForm({
         Negotiate Spirit Stones or request a sect courtyard inspection.
       </p>
 
-      {isSent && (
+      {successMsg && (
         <div className="message-success" role="status">
-          Transmission sealed! Your message has been saved for the seller.
+          {successMsg}
         </div>
       )}
 
