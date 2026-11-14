@@ -68,7 +68,7 @@ export default function CreateListingForm() {
 
     const trimmedTitle = title.trim();
     const trimmedDesc = description.trim();
-    const trimmedEmail = sellerEmail.trim();
+    const trimmedEmail = sellerEmail.trim().toLowerCase();
     const numericPrice = Number(price);
 
     if (!imageFile) {
@@ -86,8 +86,10 @@ export default function CreateListingForm() {
       return;
     }
 
-    if (Number.isNaN(numericPrice) || numericPrice < 0) {
-      setErrorMsg("Please enter a valid price (0 or greater).");
+    if (Number.isNaN(numericPrice) || numericPrice < 0.5) {
+      setErrorMsg(
+        "Please enter a price of at least 0.50 ($0.50 USD minimum for Stripe Checkout).",
+      );
       return;
     }
 
@@ -232,13 +234,13 @@ export default function CreateListingForm() {
 
             <div className="field-group">
               <label htmlFor="treasure-price" className="field-label">
-                Price (Spirit Stones)
+                Price (Spirit Stones • $1 USD each)
               </label>
               <input
                 id="treasure-price"
                 type="number"
                 className="text-input"
-                min="0"
+                min="0.50"
                 step="0.01"
                 placeholder="150"
                 value={price}

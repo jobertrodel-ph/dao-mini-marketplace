@@ -3,12 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import BuyNowButton from "@/components/BuyNowButton";
 import ListedDate from "@/components/ListedDate";
 import MessageSellerForm from "@/components/MessageSellerForm";
 import {
   formatSpiritStones,
   getSupabaseClient,
   type Listing,
+  type SellerAccount,
 } from "@/lib/supabase";
 
 async function ListingDetailLoader({
@@ -20,6 +22,7 @@ async function ListingDetailLoader({
   const { id } = await params;
 
   let listing: Listing | null = null;
+  let seller: SellerAccount | null = null;
   let loadError: string | null = null;
 
   try {
@@ -27,7 +30,7 @@ async function ListingDetailLoader({
     const { data, error } = await supabase
       .from("listings")
       .select(
-        "id, title, description, price, seller_email, category, image_url, created_at",
+        "id, title, description, price, seller_email, category, image_url, status, created_at",
       )
       .eq("id", id)
       .maybeSingle();
@@ -35,7 +38,20 @@ async function ListingDetailLoader({
     if (error) {
       loadError = error.message;
     } else if (data) {
-      listing = data as Listing;
+      listing = {
+        ...(data as Listing),
+        status: (data as Listing).status ?? "available",
+      };
+      const { data: sellerData } = await supabase
+        .from("sellers")
+        .select(
+          "email, stripe_account_id, charges_enabled, details_submitted, created_at, updated_at",
+        )
+        .eq("email", listing.seller_email.trim().toLowerCase())
+        .maybeSingle();
+      if (sellerData) {
+        seller = sellerData as SellerAccount;
+      }
     }
   } catch (err) {
     loadError =
@@ -83,9 +99,14 @@ async function ListingDetailLoader({
 
         <div className="detail-info-column">
           <section className="detail-scroll-card">
-            <span className="treasure-category-pill detail-pill">
-              {listing.category}
-            </span>
+            <div className="detail-pill-row">
+              <span className="treasure-category-pill detail-pill">
+                {listing.category}
+              </span>
+              {listing.status === "sold" && (
+                <span className="detail-sold-pill">SOLD • 已售</span>
+              )}
+            </div>
             <h1 className="detail-title">{listing.title}</h1>
             <p className="detail-price">{formatSpiritStones(listing.price)}</p>
 
@@ -107,6 +128,38 @@ async function ListingDetailLoader({
               <p className="detail-description">{listing.description}</p>
             </div>
           </section>
+
+          {listing.status === "sold" ? (
+            <section className="buy-box-card buy-box-card--sold">
+              <h2 className="buy-box-title">This Treasure Has Been Sold</h2>
+              <p className="buy-box-copy">
+                Another cultivator has already claimed this relic through the
+                Immortal Bazaar.
+              </p>
+            </section>
+          ) : seller?.charges_enabled ? (
+            <BuyNowButton
+              listingId={listing.id}
+              price={Number(listing.price)}
+            />
+          ) : (
+            <section className="buy-box-card buy-box-card--unverified">
+              <h2 className="buy-box-title">Purchase Unavailable</h2>
+              <p className="buy-box-copy">
+                This seller has not completed Stripe Connect onboarding yet, so
+                online checkout is disabled. You can still message the seller
+                below.
+              </p>
+              <Link
+                href={`/connect?email=${encodeURIComponent(
+                  listing.seller_email,
+                )}`}
+                className="connect-inline-link"
+              >
+                Are you the seller? Connect with Stripe →
+              </Link>
+            </section>
+          )}
 
           <MessageSellerForm listingId={listing.id} />
         </div>

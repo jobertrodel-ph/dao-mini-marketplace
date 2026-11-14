@@ -20,6 +20,9 @@ export default function BazaarNavbar() {
           <Link href="/" className="nav-link">
             Browse
           </Link>
+          <Link href="/connect" className="nav-link nav-link--connect">
+            Connect with Stripe
+          </Link>
           <Link href="/create" className="btn-offer-treasure">
             + Offer Treasure
           </Link>

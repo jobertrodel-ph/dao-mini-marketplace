@@ -11,18 +11,35 @@ async function MarketplaceLoader() {
 
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from("listings")
-      .select(
-        "id, title, description, price, seller_email, category, image_url, created_at",
-      )
-      .order("created_at", { ascending: false })
-      .limit(60);
+    const [listingsRes, sellersRes] = await Promise.all([
+      supabase
+        .from("listings")
+        .select(
+          "id, title, description, price, seller_email, category, image_url, status, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(60),
+      supabase
+        .from("sellers")
+        .select("email, charges_enabled")
+        .eq("charges_enabled", true),
+    ]);
 
-    if (error) {
-      initialError = error.message;
-    } else if (data) {
-      initialListings = data as Listing[];
+    if (listingsRes.error) {
+      initialError = listingsRes.error.message;
+    } else if (listingsRes.data) {
+      const onboardedEmails = new Set(
+        (sellersRes.data ?? []).map((row) =>
+          String(row.email).trim().toLowerCase(),
+        ),
+      );
+      initialListings = (listingsRes.data as Listing[]).map((item) => ({
+        ...item,
+        status: item.status ?? "available",
+        seller_onboarded: onboardedEmails.has(
+          item.seller_email.trim().toLowerCase(),
+        ),
+      }));
     }
   } catch (err) {
     initialError =

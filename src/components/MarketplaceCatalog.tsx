@@ -167,6 +167,15 @@ export default function MarketplaceCatalog({
                 <span className="treasure-category-pill">
                   {listing.category}
                 </span>
+                {listing.status === "sold" ? (
+                  <span className="treasure-status-badge treasure-status-badge--sold">
+                    SOLD
+                  </span>
+                ) : listing.seller_onboarded ? (
+                  <span className="treasure-status-badge treasure-status-badge--ready">
+                    Buy Now Ready
+                  </span>
+                ) : null}
               </div>
 
               <div className="treasure-card-body">
